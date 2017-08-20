@@ -96,23 +96,25 @@ function spotifyThisSong() {
 };
 
 function movieThis() {
-    request('http://www.omdbapi.com/?apikey=40e9cece&', function (error, data) {
-    	if (error) {
-    		console.log("Error!\n" + error);
-    	} else {
-    		console.log(data);
-    	}
+    if (!process.argv[3]) {
+        movieSearchKey = "Mr.Nobody";
+    } else {
+        movieSearchKey = argument;
+    };
+
+    request("http://www.omdbapi.com/?t=" + movieSearchKey + "&apikey=40e9cece&", function(error, data) {
+        if (error) {
+            console.log("Error!\n" + error);
+        } else {
+            movieData = data.body;
+            console.log("Title: " + JSON.parse(movieData).Title + "\n---------------");
+            console.log("Year released: " + JSON.parse(movieData).Year);
+            console.log("Imdb Rating: " + JSON.parse(movieData).imdbRating);
+            console.log("Rotten Tomatoes Rating: " + JSON.parse(movieData).Ratings[1].Value);
+            console.log("Actors: " + JSON.parse(movieData).Actors + "\n");
+            console.log("Plot: " + JSON.parse(movieData).Plot);
+        };
     });
-/*
-   * Title of the movie.
-   * Year the movie came out.
-   * IMDB Rating of the movie.
-   * Rotten Tomatoes Rating of the movie.
-   * Country where the movie was produced.
-   * Language of the movie.
-   * Plot of the movie.
-   * Actors in the movie.
-    */
 };
 
 function doWhatItSays() {
