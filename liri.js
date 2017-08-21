@@ -127,6 +127,7 @@ function Liri() {
 
     //Searches for a movie using the OMDB API.  Provides a default if no argument is specified.
     this.movieThis = function() {
+        var rTValue = "N/A";
         if (!process.argv[3]) {
             var movieSearchKey = "Mr.Nobody";
         } else {
@@ -134,22 +135,25 @@ function Liri() {
         };
 
         master.request("http://www.omdbapi.com/?t=" + movieSearchKey + "&apikey=40e9cece&", function(error, data, body) {
-            if (error && data.statusCode != 200) {
-                master.logData("Error!\n" + error);
-            } else {
+            if (!error && JSON.parse(body).Title != undefined) {
                 master.logData("Title: " + JSON.parse(body).Title + "\n---------------");
                 master.logData("Year released: " + JSON.parse(body).Year);
                 master.logData("Imdb Rating: " + JSON.parse(body).imdbRating);
+
                 //Note: Not all entries have these optional ratings!  V, for instance, does not and this will throw an error.
-                //Instead of breaking the program, we'll answer with "N/A"
-                try {
-                    master.logData("Rotten Tomatoes Rating: " + JSON.parse(body).Ratings[1].Value);
-                } catch (error) {
-                    master.logData("Rotten Tomatoes Rating: N/A");
-                };
+                //Instead of breaking the program, we'll do a search for the optional rating
+                JSON.parse(body).Ratings.forEach(function(key) {
+                    if (key.Source === 'Rotten Tomatoes') {
+                        rTValue = key.Value;
+                    };
+                });
+                
+                master.logData("Rotten Tomatoes Rating: " + rTValue);
                 master.logData("Actors: " + JSON.parse(body).Actors + "\n");
                 master.logData("Plot: " + JSON.parse(body).Plot);
                 master.logData("\n\n");
+            } else {
+                master.logData("Error!\n" + error);
             };
         });
     };
