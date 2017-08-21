@@ -106,19 +106,18 @@ function Liri() {
         spotify.search({ type: 'track', query: master.argument, limit: setLimit }, function(error, data) {
             if (error) {
                 master.logData("Error!\n" + error);
+            } else if (data.tracks.items[0] === undefined) {
+                master.logData("Error. Search returned no results.");
             } else {
-                for (i = 0; i < setLimit; i++) {
-                    if (data.tracks.items[i]) {
-                        master.logData("Search result #" + (i + 1) + "\n----------------");
-                        master.logData("Song Name: " + data.tracks.items[i].name);
-                        master.logData("Album: " + data.tracks.items[i].album.name);
-                        master.logData("Artist(s): ");
-                        data.tracks.items[i].artists.forEach(function(key) {
-                            master.logData("  " + key.name);
-                        });
-                        master.logData("Preview URL: " + data.tracks.items[i].preview_url + "\n");
-                    }
-
+                for (i = 0; i < data.tracks.items.length; i++) {
+                    master.logData("Search result #" + (i + 1) + "\n----------------");
+                    master.logData("Song Name: " + data.tracks.items[i].name);
+                    master.logData("Album: " + data.tracks.items[i].album.name);
+                    master.logData("Artist(s): ");
+                    data.tracks.items[i].artists.forEach(function(key) {
+                        master.logData("  " + key.name);
+                    });
+                    master.logData("Preview URL: " + data.tracks.items[i].preview_url + "\n");
                 }
                 master.logData("\n\n");
             }
@@ -135,7 +134,11 @@ function Liri() {
         };
 
         master.request("http://www.omdbapi.com/?t=" + movieSearchKey + "&apikey=40e9cece&", function(error, data, body) {
-            if (!error && JSON.parse(body).Title != undefined) {
+            if (error) {
+                master.logData("Error!\n" + error);
+            } else if (JSON.parse(body).Title === undefined) {
+                master.logData("Error. Search returned no results.");
+            } else {
                 master.logData("Title: " + JSON.parse(body).Title + "\n---------------");
                 master.logData("Year released: " + JSON.parse(body).Year);
                 master.logData("Imdb Rating: " + JSON.parse(body).imdbRating);
@@ -147,14 +150,13 @@ function Liri() {
                         rTValue = key.Value;
                     };
                 });
-                
+
                 master.logData("Rotten Tomatoes Rating: " + rTValue);
                 master.logData("Actors: " + JSON.parse(body).Actors + "\n");
                 master.logData("Plot: " + JSON.parse(body).Plot);
                 master.logData("\n\n");
-            } else {
-                master.logData("Error!\n" + error);
-            };
+            }
+
         });
     };
 
