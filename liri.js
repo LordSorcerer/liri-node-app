@@ -1,159 +1,210 @@
-//Set up all package 'require' requests, including our keys.js file
-var request = require('request'),
-    fs = require('fs'),
-    keys = require('./keys.js');
+var liriBot = new Liri();
 
-var action = process.argv[2],
-    argument = "";
-//Parse through the remaining indexes in the argument array and concatenate them into a single string, separated by spaces
-if (process.argv[3] != null) {
-    for (i = 3; i < process.argv.length; i++) {
-        argument += process.argv[i] + ' ';
+liriBot.processAction();
+
+
+//master is the main Liri object
+function Liri() {
+    //In order to avoid any scoping unpleasantness, create a variable called "master" to allow access to the highest level of scope within LIRI
+    var master = this;
+    //Set up all package 'require' requests, including our keys.js file.  Since not all functions require these I decided not to
+    this.now = new Date();
+    this.request = require('request');
+    this.fs = require('fs');
+    this.keys = require('./keys.js');
+    this.Twitter = require('twitter');
+    this.Spotify = require('node-spotify-api');
+    this.inquirer = require('inquirer');
+    this.action = process.argv[2];
+    this.argument = "";
+    //Parse through the remaining indexes in the argument array and concatenate them into a single string, separated by spaces
+    if (process.argv[3]) {
+        for (i = 3; i < process.argv.length; i++) {
+            this.argument += process.argv[i] + ' ';
+        };
     };
-}
 
-processAction();
+    //////// Liri's Methods ////////
 
-function processAction() {
-    switch (action) {
-        case 'my-tweets':
-            myTweets();
-            break;
-        case 'spotify-this-song':
-            spotifyThisSong();
-            break;
-        case 'movie-this':
-            movieThis();
-            break;
-        case 'do-what-it-says':
-            doWhatItSays();
-            break;
-        default:
-            console.log("This is not a designated function of LIRI.  Terminating session.");
+    //Logs all data to both the console and a text file called 'log.txt'
+    this.logData = function(text) {
+        console.log(text);
+        master.fs.appendFileSync('log.txt', text + '\r\n', "utf-8", function(error) {
+            if (error) {
+                console.log("Error!" + error);
+            }
+        });
+    };
+
+    //Create a new console.log and log.txt entry with a time/date stamp
+    this.timeStamp = function() {
+        master.logData("*****" + master.now + "*****\n");
     }
 
-}
-
-
-function myTweets() {
-    var Twitter = require('twitter');
-
-    var client = new Twitter({
-        consumer_key: keys.twitterKeys.consumer_key,
-        consumer_secret: keys.twitterKeys.consumer_secret,
-        access_token_key: keys.twitterKeys.access_token_key,
-        access_token_secret: keys.twitterKeys.access_token_secret,
-    });
-
-    var params = { screen_name: 'HillLIRIous' };
-    client.get('statuses/user_timeline', params, function(error, tweets, response) {
-        if (error) {
-            console.log(error);
-        } else {
-            //Go through the 20 most recent tweets in descending chronological order and console.log each with a timestamp
-            for (i = 0; i < 20; i++) {
-                if (tweets[i]) {
-                    console.log("Time/Date: " + tweets[i].created_at + "\n" + tweets[i].text + "\n");
-                }
-
-            }
-        }
-    });
-};
-
-function spotifyThisSong() {
-    var Spotify = require('node-spotify-api');
-    var setLimit = 5;
-
-    var spotify = new Spotify({
-        id: keys.spotifyKeys.id,
-        secret: keys.spotifyKeys.secret,
-    });
-
-    if (!process.argv[3]) {
-        argument = "The Sign by Ace of Base";
-    };
-
-    spotify.search({ type: 'track', query: argument, limit: setLimit }, function(error, data) {
-        if (error) {
-            console.log("Error!\n" + error);
-        } else {
-            for (i = 0; i < setLimit; i++) {
-                if (data.tracks.items[i]) {
-                    console.log("Search result #" + (i + 1) + "\n----------------");
-                    console.log("Song Name: " + data.tracks.items[i].name);
-                    console.log("Album: " + data.tracks.items[i].album.name);
-                    console.log("Artist(s): ");
-                    data.tracks.items[i].artists.forEach(function(key) {
-                        console.log("  " + key.name);
-                    });
-                    console.log("Preview URL: " + data.tracks.items[i].preview_url + "\n");
-                }
-
-            }
-        }
-    });
-};
-
-function movieThis() {
-    if (!process.argv[3]) {
-        movieSearchKey = "Mr.Nobody";
-    } else {
-        movieSearchKey = argument;
-    };
-
-    request("http://www.omdbapi.com/?t=" + movieSearchKey + "&apikey=40e9cece&", function(error, data) {
-        if (error) {
-            console.log("Error!\n" + error);
-        } else {
-            movieData = data.body;
-            console.log("Title: " + JSON.parse(movieData).Title + "\n---------------");
-            console.log("Year released: " + JSON.parse(movieData).Year);
-            console.log("Imdb Rating: " + JSON.parse(movieData).imdbRating);
-            console.log("Rotten Tomatoes Rating: " + JSON.parse(movieData).Ratings[1].Value);
-            console.log("Actors: " + JSON.parse(movieData).Actors + "\n");
-            console.log("Plot: " + JSON.parse(movieData).Plot);
+    //Runs the user's initial request and is called again
+    this.processAction = function() {
+        switch (master.action) {
+            case 'my-tweets':
+                master.timeStamp();
+                master.myTweets();
+                break;
+            case 'spotify-this-song':
+                master.timeStamp();
+                master.spotifyThisSong();
+                break;
+            case 'movie-this':
+                master.timeStamp();
+                master.movieThis();
+                break;
+            case 'do-what-it-says':
+                master.doWhatItSays();
+                break;
+                //If the user doesn't know the commands or types one in incorrectly, LIRI will offer to activate the 'inquirer' based interface.
+            default:
+                console.log("'" + master.action + "' is not a designated command line function of LIRI. Activating the advanced interface.");
+                master.advancedInterface();
         };
-    });
-};
 
-function doWhatItSays() {
-    fs.readFile('./random.txt', 'UTF-8', function(error, data) {
-        if (error) {
-            console.log("Error!\n" + error);
+    };
+
+    //Gets up to the 20 latest tweets via the twitter node package.
+    this.myTweets = function() {
+        var client = new master.Twitter({
+            consumer_key: master.keys.twitterKeys.consumer_key,
+            consumer_secret: master.keys.twitterKeys.consumer_secret,
+            access_token_key: master.keys.twitterKeys.access_token_key,
+            access_token_secret: master.keys.twitterKeys.access_token_secret,
+        });
+        client.get('statuses/user_timeline', { screen_name: 'HillLIRIous' }, function(error, tweets, response) {
+            if (error) {
+                master.logData(error);
+            } else {
+                //Go through the 20 most recent tweets in descending chronological order and log each with a timestamp
+                for (i = 0; i < 20; i++) {
+                    if (tweets[i]) {
+                        master.logData("Time/Date: " + tweets[i].created_at + "\n" + tweets[i].text + "\n");
+                    }
+
+                }
+                master.logData("\n\n");
+            }
+        });
+    };
+    //Searches for a song using the spotify node package.  Provides a default if no argument is specified.
+    this.spotifyThisSong = function() {
+        var spotify = new master.Spotify({
+                id: master.keys.spotifyKeys.id,
+                secret: master.keys.spotifyKeys.secret,
+            }),
+            //Used to control the number of tracks returned
+            setLimit = 5;
+        //If there's no argument beyond the action, assign one
+        if (!process.argv[3]) {
+            master.argument = "The Sign by Ace of Base";
+        };
+
+        spotify.search({ type: 'track', query: master.argument, limit: setLimit }, function(error, data) {
+            if (error) {
+                master.logData("Error!\n" + error);
+            } else {
+                for (i = 0; i < setLimit; i++) {
+                    if (data.tracks.items[i]) {
+                        master.logData("Search result #" + (i + 1) + "\n----------------");
+                        master.logData("Song Name: " + data.tracks.items[i].name);
+                        master.logData("Album: " + data.tracks.items[i].album.name);
+                        master.logData("Artist(s): ");
+                        data.tracks.items[i].artists.forEach(function(key) {
+                            master.logData("  " + key.name);
+                        });
+                        master.logData("Preview URL: " + data.tracks.items[i].preview_url + "\n");
+                    }
+
+                }
+                master.logData("\n\n");
+            }
+        });
+    };
+
+    //Searches for a movie using the OMDB API.  Provides a default if no argument is specified.
+    this.movieThis = function() {
+        if (!process.argv[3]) {
+            var movieSearchKey = "Mr.Nobody";
         } else {
-            var splitData = data.split(",");
-            action = splitData[0];
-            argument = splitData[1];
-            processAction();
-        }
-    });
-};
+            var movieSearchKey = master.argument;
+        };
 
+        master.request("http://www.omdbapi.com/?t=" + movieSearchKey + "&apikey=40e9cece&", function(error, data) {
+            if (error) {
+                master.logData("Error!\n" + error);
+            } else {
+                master.logData("Title: " + JSON.parse(data.body).Title + "\n---------------");
+                master.logData("Year released: " + JSON.parse(data.body).Year);
+                master.logData("Imdb Rating: " + JSON.parse(data.body).imdbRating);
+                master.logData("Rotten Tomatoes Rating: " + JSON.parse(data.body).Ratings[1].Value);
+                master.logData("Actors: " + JSON.parse(data.body).Actors + "\n");
+                master.logData("Plot: " + JSON.parse(data.body).Plot);
+                master.logData("\n\n");
+            };
+        });
+    };
 
-/*
-function Liri() {
-    this.name = name;
-    this.profession = profession;
-    this.gender = gender;
-    this.age = age;
-    this.level = level;
-    this.strength = strength;
-    this.hp = hp;
+    this.doWhatItSays = function() {
+        master.fs.readFile('./random.txt', 'UTF-8', function(error, data) {
+            if (error) {
+                master.logData("Error!\n" + error);
+            } else {
+                var splitData = data.split(",");
+                master.action = splitData[0];
+                master.argument = splitData[1];
+                master.processAction();
+            }
+        });
+    };
 
-    this.printStats = function() {
-        if (this.isAlive()) {
-            console.log("");
-            console.log("Name: " + this.name);
-            console.log("Profession: " + this.profession);
-            console.log("Gender: " + this.gender);
-            console.log("Age: " + this.age);
-            console.log("Level: " + this.level);
-            console.log("Strength: " + this.strength);
-            console.log("Hit Points: " + this.hp);
-            console.log("-------------");
-            console.log("");
-        } else {
-            console.log(this.name + " is dead.");
-        }
+    //Liri's advanced interface, activated when the user enters an incorrect command or no command at all, on the command line
+    //Currently uses default results
+    this.advancedInterface = function() {
+        master.inquirer.prompt([{
+            type: "list",
+            choices: ["Get my latest tweets", new master.inquirer.Separator(), "Spotify search", new master.inquirer.Separator(), "Movie search", new master.inquirer.Separator(), "Run default action from file (random.txt)", new master.inquirer.Separator(), "Exit", new master.inquirer.Separator()],
+            name: "action",
+            message: "Please choose an action from the list: \n"
+        }]).then(function(data) {
+            switch (data.action) {
+                case "Get my latest tweets":
+                    master.timeStamp();
+                    master.myTweets();
+                    break;
+                case "Spotify search":
+                    master.timeStamp();
+                    master.spotifyThisSong();
+                    break;
+                case "Movie search":
+                    master.timeStamp();
+                    master.movieThis();
+                    break;
+                case "Run default action from file (random.txt)":
+                    master.doWhatItSays();
+                    break;
+                case "Exit":
+                default:
+            };
+            console.log("Thank you for using the LIRI advanced interface.  Goodbye.");
+        });
+    };
+
+    //This function is a work in progress.  It is meant to allow the user to enter additional query information, say a movie title, into the Advanced Interface.
+    //Currently there is some sort of synchronization error.
+    /*this.advancedInterfaceInput = function() {
+        var query;
+        master.inquirer.prompt([{
+            type: "input",
+            name: "query",
+            message: "Enter your query: \n"
+        }]).then(function(data) {
+            console.log(data.query);
+            query = data.query;
+        });
+        return query;
     };*/
+};
