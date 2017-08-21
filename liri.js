@@ -41,7 +41,7 @@ function Liri() {
         master.logData("*****" + master.now + "*****\n");
     }
 
-    //Runs the user's initial request and is called again
+    //Runs the user's initial request and is called again by doWhatItSays()
     this.processAction = function() {
         switch (master.action) {
             case 'my-tweets':
@@ -133,16 +133,22 @@ function Liri() {
             var movieSearchKey = master.argument;
         };
 
-        master.request("http://www.omdbapi.com/?t=" + movieSearchKey + "&apikey=40e9cece&", function(error, data) {
-            if (error) {
+        master.request("http://www.omdbapi.com/?t=" + movieSearchKey + "&apikey=40e9cece&", function(error, data, body) {
+            if (error && data.statusCode != 200) {
                 master.logData("Error!\n" + error);
             } else {
-                master.logData("Title: " + JSON.parse(data.body).Title + "\n---------------");
-                master.logData("Year released: " + JSON.parse(data.body).Year);
-                master.logData("Imdb Rating: " + JSON.parse(data.body).imdbRating);
-                master.logData("Rotten Tomatoes Rating: " + JSON.parse(data.body).Ratings[1].Value);
-                master.logData("Actors: " + JSON.parse(data.body).Actors + "\n");
-                master.logData("Plot: " + JSON.parse(data.body).Plot);
+                master.logData("Title: " + JSON.parse(body).Title + "\n---------------");
+                master.logData("Year released: " + JSON.parse(body).Year);
+                master.logData("Imdb Rating: " + JSON.parse(body).imdbRating);
+                //Note: Not all entries have these optional ratings!  V, for instance, does not and this will throw an error.
+                //Instead of breaking the program, we'll answer with "N/A"
+                try {
+                    master.logData("Rotten Tomatoes Rating: " + JSON.parse(body).Ratings[1].Value);
+                } catch (error) {
+                    master.logData("Rotten Tomatoes Rating: N/A");
+                };
+                master.logData("Actors: " + JSON.parse(body).Actors + "\n");
+                master.logData("Plot: " + JSON.parse(body).Plot);
                 master.logData("\n\n");
             };
         });
@@ -188,9 +194,10 @@ function Liri() {
                     break;
                 case "Exit":
                 default:
+                    console.log("Thank you for using the LIRI advanced interface.  Goodbye.\n\n");
             };
-            console.log("Thank you for using the LIRI advanced interface.  Goodbye.");
         });
+
     };
 
     //This function is a work in progress.  It is meant to allow the user to enter additional query information, say a movie title, into the Advanced Interface.
