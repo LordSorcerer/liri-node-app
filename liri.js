@@ -2,8 +2,6 @@ var liriBot = new Liri();
 
 liriBot.processAction();
 
-
-//master is the main Liri object
 function Liri() {
     //In order to avoid any scoping unpleasantness, create a variable called "master" to allow access to the highest level of scope within LIRI
     var master = this;
